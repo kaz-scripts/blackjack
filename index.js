@@ -7,6 +7,7 @@ let status = 0;
 let userid;
 let bet = '232142'
 let channel;
+let play = 0;
 client.on('ready', async () => {
   console.log(`${client.user.username} is ready!`);
   userid = client.user.id;
@@ -45,6 +46,13 @@ client.on('messageCreate', async (message) => {
 				}
 				else if (message.components[0].components[0]['label'].includes("Play Again")){
 					console.log("Play")
+					play++;
+					if (play >= 5) {
+						play = 0;
+						status = 1;
+						await channel.sendSlash(applicationId, "blackjack", [bet])
+						break;
+					}
 					message.clickButton(message.components[0].components[0].customId)
 				}
 				else if (message.embeds && message.embeds[0] && message.embeds[0]['fields']) {
@@ -70,11 +78,11 @@ client.on('messageCreate', async (message) => {
 						clearInterval(interval);
 						resolve();
 					}
-				}, 1000);
+				}, 750);
 				
 				
 			});
-			await new Promise(resolve => setTimeout(resolve, 1500));
+			await new Promise(resolve => setTimeout(resolve, 1250));
 			}
 			 catch (error) {
 				console.log("error:", error)
@@ -122,31 +130,40 @@ function getnum(inputString) {
   ];
 }
 
+async function safeAction(action, message) {
+  try {
+    await action(message);
+  } catch (error) {
+    console.log(`エラーを無視: ${error.message}`);
+  }
+}
+
+// Example usage in the action function
 async function action(result, message) {
     switch(result) {
         case "Hit":
-            message.clickButton(message.components[0].components[0].customId)
+            await safeAction(() => message.clickButton(message.components[0].components[0].customId), message);
             break;
         case "Stand":
-            message.clickButton(message.components[0].components[1].customId)
+            await safeAction(() => message.clickButton(message.components[0].components[1].customId), message);
             break;
-		case "Double":
-			await message.clickButton(message.components[0].components[2].customId)
-			break;
+        case "Double":
+            await safeAction(() => message.clickButton(message.components[0].components[2].customId), message);
+            break;
         case "Split":
-            message.clickButton(message.components[0].components[3].customId)
+            await safeAction(() => message.clickButton(message.components[0].components[3].customId), message);
             break;
         case "Surrender":
-            message.clickButton(message.components[1].components[0].customId)
+            await safeAction(() => message.clickButton(message.components[1].components[0].customId), message);
             break;
-		case "Play":
-			message.clickButton(message.components[0].components[0].customId)
-			break;
-		
+        case "Play":
+            await safeAction(() => message.clickButton(message.components[0].components[0].customId), message);
+            break;
         default:
             console.log("Unknown action");
     }
 }
+
 
 
 
@@ -335,3 +352,7 @@ function strategy(dealer, player, split=false, split2=false) {
 
 
 client.login('tokenhere');
+
+process.on('uncaughtException', (err) => {
+  console.error(err);
+});
