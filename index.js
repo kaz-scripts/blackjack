@@ -5,9 +5,13 @@ const applicationId = '270904126974590976';
 
 let status = 0;
 let userid;
-let bet = '232142'
+let bet = '10k'
 let channel;
-let play = 0;
+let preaction = ""
+let count = 0;
+let win = 0;
+let lose = 0;
+let draw = 0;
 client.on('ready', async () => {
   console.log(`${client.user.username} is ready!`);
   userid = client.user.id;
@@ -38,22 +42,38 @@ client.on('messageCreate', async (message) => {
 			let old = message.embeds[0]['fields'][0].value;
 			status = 2
 			while(status == 2){
-				try {
+				if (count > 5) {
+					status = 1;
+					preaction = ""
+					count = 0;
+					await channel.sendSlash(applicationId, "blackjack", [bet])
+					break;
+				}
+			
 				old = message.embeds[0]['fields'][0];
 				if (message.components && message.components[1].components[0]['label'] == 'Start Game') {
-					console.log('Start')
+					//console.log('Start')
 					await channel.sendSlash(applicationId, "blackjack", [bet])
 				}
 				else if (message.components[0].components[0]['label'].includes("Play Again")){
-					console.log("Play")
-					play++;
-					if (play >= 5) {
-						play = 0;
-						status = 1;
-						await channel.sendSlash(applicationId, "blackjack", [bet])
-						break;
+					//console.log("Play")
+					action("Play", message)
+					const color = message.embeds[0].color;
+					if (color == 5025616) {
+						win++
 					}
-					message.clickButton(message.components[0].components[0].customId)
+					else if (color == 15022389) {
+						lose++
+					}
+					else {
+						draw++
+					}
+					console.clear()
+					console.log(`Win: ${win}`)
+					console.log(`Lose: ${lose}`)
+					console.log(`Draw: ${draw}`)
+					console.log(`WR: ${win / (win + lose) * 100}%`)
+					
 				}
 				else if (message.embeds && message.embeds[0] && message.embeds[0]['fields']) {
 					const dealer = getnum(message.embeds[0]['fields'][0]['value'])
@@ -62,13 +82,13 @@ client.on('messageCreate', async (message) => {
 						const playerindex = message.embeds[0]['fields'].findIndex(item => item.name.includes('Player'));
 						player = getnum(message.embeds[0]['fields'][playerindex]['value'])
 						const select = strategy(dealer, player, true, message.embeds[0]['fields'].length===4)
-						console.log(select)
-						await action(select, message)
+						//console.log(select)
+						action(select, message)
 					}
 					else {
 						const select = strategy(dealer, player)
-						console.log(select)
-						await action(select, message)
+						//console.log(select)
+						action(select, message)
 					}
 			}
 			await new Promise((resolve) => {
@@ -82,11 +102,7 @@ client.on('messageCreate', async (message) => {
 				
 				
 			});
-			await new Promise(resolve => setTimeout(resolve, 1250));
-			}
-			 catch (error) {
-				console.log("error:", error)
-			}
+			await new Promise(resolve => setTimeout(resolve, 1150));
 			}
 		}
 	}
@@ -130,44 +146,34 @@ function getnum(inputString) {
   ];
 }
 
-async function safeAction(action, message) {
-  try {
-    await action(message);
-  } catch (error) {
-    console.log(`エラーを無視: ${error.message}`);
-  }
-}
 
 // Example usage in the action function
 async function action(result, message) {
+	if (preaction == result) count++
+	preaction = result;
     switch(result) {
         case "Hit":
-            await safeAction(() => message.clickButton(message.components[0].components[0].customId), message);
+            await message.clickButton(message.components[0].components[0].customId)
             break;
         case "Stand":
-            await safeAction(() => message.clickButton(message.components[0].components[1].customId), message);
+            await message.clickButton(message.components[0].components[1].customId)
             break;
         case "Double":
-            await safeAction(() => message.clickButton(message.components[0].components[2].customId), message);
+            await message.clickButton(message.components[0].components[2].customId)
             break;
         case "Split":
-            await safeAction(() => message.clickButton(message.components[0].components[3].customId), message);
+            await message.clickButton(message.components[0].components[3].customId)
             break;
         case "Surrender":
-            await safeAction(() => message.clickButton(message.components[1].components[0].customId), message);
+            await message.clickButton(message.components[1].components[0].customId);
             break;
         case "Play":
-            await safeAction(() => message.clickButton(message.components[0].components[0].customId), message);
+            await message.clickButton(message.components[0].components[0].customId);
             break;
         default:
             console.log("Unknown action");
     }
 }
-
-
-
-
-
 
 function strategy(dealer, player, split=false, split2=false) {
     const dealerCard = dealer[0][0];
@@ -188,7 +194,7 @@ function strategy(dealer, player, split=false, split2=false) {
 	}
 
     // Check if player has a pair
-    if (playerCards.length === 2 && playerCards[0] === playerCards[1] && !split2) {
+    if (!(split && playerCards.includes(1)) && playerCards.length === 2 && playerCards[0] === playerCards[1] && !split2) {
         const pairCard = playerCards[0];
         switch (pairCard) {
             case 1: // Pair of Aces
