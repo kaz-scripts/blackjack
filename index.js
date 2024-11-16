@@ -5,13 +5,18 @@ const applicationId = '270904126974590976';
 
 let status = 0;
 let userid;
-let bet = '10k'
+let bet = "10k"
 let channel;
 let preaction = ""
 let count = 0;
 let win = 0;
 let lose = 0;
 let draw = 0;
+
+const errorLog = [];
+const MAX_ERRORS = 6;
+const TIME_WINDOW = 10000; // 10秒（ミリ秒）
+
 client.on('ready', async () => {
   console.log(`${client.user.username} is ready!`);
   userid = client.user.id;
@@ -102,7 +107,7 @@ client.on('messageCreate', async (message) => {
 				
 				
 			});
-			await new Promise(resolve => setTimeout(resolve, 1150));
+			await new Promise(resolve => setTimeout(resolve, 750));
 			}
 		}
 	}
@@ -357,8 +362,20 @@ function strategy(dealer, player, split=false, split2=false) {
 }
 
 
-client.login('tokenhere');
+client.login('Mt');
 
 process.on('uncaughtException', (err) => {
   console.error(err);
+
+  const now = Date.now();
+  errorLog.push(now);
+
+  while (errorLog.length > 0 && errorLog[0] < now - TIME_WINDOW) {
+    errorLog.shift();
+  }
+
+  if (errorLog.length > MAX_ERRORS) {
+    count = 6
+    errorLog.length = 0;
+  }
 });
